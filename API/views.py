@@ -167,9 +167,44 @@ import io
 @csrf_exempt
 def image_api_v2(request):
     if request.method == 'POST':
-        img_file = request.FILES['image']
         param = request.POST['mask']
+        img_file = request.FILES['image']
+        print(type(param))
+        print(param)
+        
         mp_pose = mp.solutions.pose.Pose()
+        # a="output_image.jpg"
+        if param =="1":
+            a=r"C:\Users\Falcon\hijabApi\API\HIJAB\1.png"
+            paste_x =90
+            paste_y = 185
+        elif param == "2":
+            a = r"C:\Users\Falcon\hijabApi\API\HIJAB\2.png"
+            paste_x =90
+            paste_y = 185
+        elif param == "3":
+            a = r"C:\Users\Falcon\hijabApi\API\HIJAB\3.png"
+            paste_x =90
+            paste_y = 170
+        elif param == "4":
+            a = r"C:\Users\Falcon\hijabApi\API\HIJAB\4.png"
+            paste_x =80
+            paste_y = 208
+        elif param == "5":
+            a = r"C:\Users\Falcon\hijabApi\API\HIJAB\5.png"
+            paste_x =100
+            paste_y = 178
+        elif param == "6":
+            a = r"C:\Users\Falcon\hijabApi\API\HIJAB\6.png"
+            paste_x =95
+            paste_y = 184
+        elif param =="7":
+            a=r"C:\Users\Falcon\hijabApi\API\HIJAB\7.png"
+            paste_x =95
+            paste_y = 150
+            px=1.4
+        else:
+            return JsonResponse({'error':'Please select Maskin range 1-7 '})
 
 
         img_buffer = io.BytesIO(img_file.read())
@@ -217,34 +252,56 @@ def image_api_v2(request):
 
             # Load the base image and the image to paste
             base_image = Image.open(output_path)
-            paste_image = Image.open(r"C:\Users\Falcon\hijabApi\API\HIJAB\4.png")
+            paste_image = Image.open(a)
 
             base_width, base_height = base_image.size
 
             # Resize the paste image to fit within the base image
-            paste_image = paste_image.resize((int(base_width / 1.4), int(base_height / 1.2)))
+            px=1.2
+            print("before")
+            paste_image = paste_image.resize((int(base_width / 1.4), int(base_height / px)))
+            print("after")
+            
 
             # Define the position to paste the image
-            paste_x =80
-            paste_y = 208
+            # paste_x =80
+            # paste_y = 208
 
             # Paste the image onto the base image
             base_image = base_image.convert("RGBA")
             paste_image = paste_image.convert("RGBA")
             base_image.paste(paste_image, (paste_x, paste_y), paste_image)
 
-            # Convert the result to BGR format
+# Convert the result to BGR format
             result = cv2.cvtColor(np.array(base_image), cv2.COLOR_RGBA2BGR)
 
-            # Convert the result image to bytes
-            # result_bytes = cv2.imencode('.jpg', result)[1].tobytes()
-            retval, buffer = cv2.imencode('.jpg', result)
-            jpg_as_text = base64.b64encode(buffer).decode('utf-8')
-            return JsonResponse({"Hijab":jpg_as_text})
+            # Save the result image to a file
+            cv2.imwrite('result.png', result)
+
+            # Make the API call
+            response = requests.post(
+                'https://api.remove.bg/v1.0/removebg',
+                files={'image_file': open('result.png', 'rb')},
+                data={'size': 'auto'},
+                headers={'X-Api-Key': 'cozRq3K4ReJgYsLYBd2zwJmn'},
+            )
+
+            # Check the response status code
+            if response.status_code == requests.codes.ok:
+                # Save the output image
+                with open('no-bg.png', 'wb') as out:
+                    out.write(response.content)
+                with open('no-bg.png', 'rb') as image_file:
+                    encoded_image = base64.b64encode(image_file.read()).decode('utf-8')
+                return JsonResponse({"Hijab": encoded_image})
+            else:
+                return JsonResponse({'error': 'BG remover not working'})
+
+                
             
             
         else:
-            return jsonify({'error': 'No human body detected in the image.'})
+            return JsonResponse({'error': 'No human body detected in the image.'})
         
     
     
